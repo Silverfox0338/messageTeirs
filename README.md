@@ -1,6 +1,6 @@
 # MessageTiers (Vencord Userplugin)
 
-Local message bookmarking for Discord with tiered saves and quick viewer actions.
+Local message bookmarking for Discord with renameable presets and quick viewer actions.
 
 - Author: `silverfox0338_`
 - Author ID: `1235005349883412550`
@@ -8,37 +8,20 @@ Local message bookmarking for Discord with tiered saves and quick viewer actions
 
 ## Core
 
-- Save messages into tiers (1-9 supported in storage/viewer move actions)
+- Save messages into presets (1-9 supported in storage)
+- Set active preset count (1-9); hidden presets act as archive
 - Hover and context-menu save/remove actions
 - Quick-open viewer button in the chat text bar
-- Searchable viewer modal with jump-to-message
 - Local-only storage via Vencord plugin settings
 
-## Viewer interactions
+## Viewer
 
-- Single click: jump to message
-- Double click: insert into chat input (text, GIF, or stored message link)
-- Triple click: opens inline context menu with:
-  - Copy message content
-  - Copy message link
-  - Copy author tag
-  - Move to preset (1-9)
-  - Download attachment (media entries)
-  - Delete entry
-
-## Media behavior
-
-- If an entry is media-only (photo/video) and cannot be inserted, viewer shows:
-  - `Can't insert media — click to download`
-- Download uses browser fetch/blob flow and supports multiple attachments sequentially.
-
-## Data shape
-
-`SavedMessage` now includes:
-- `messageLink`
-- optional `attachments` metadata
+- Tabs: `All`, active preset tabs, and `Archived` when active count is below 9
+- Search by message content, author, or server
+- Single click to jump, double click to insert, triple click context menu
 
 ## Notes
 
-- CSS is scoped with `data-vc-messagetiers-*` selectors for better custom-theme resilience.
-- All Discord internals use silent fallbacks where possible.
+- `SavedMessage` includes `messageLink` and optional `attachments`
+- CSS is scoped with `data-vc-messagetiers-*` selectors for custom-theme resilience
+- Discord internals use silent fallbacks where possible

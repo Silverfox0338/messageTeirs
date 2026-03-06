@@ -7,7 +7,7 @@ import { ChannelStore, Menu, Toasts, showToast } from "@webpack/common";
 
 import { makeTierIcon, TierButton } from "./components/TierButton";
 import { openMessageTiersViewerModal } from "./components/ViewerModal";
-import settings, { getTierLabel } from "./settings";
+import settings, { getActivePresetCount, getActivePresetIds, getTierLabel, migratePresetSettings } from "./settings";
 import {
     createSaveMessageInput,
     cycleTier,
@@ -32,18 +32,18 @@ function rerenderMessage(message: Message) {
     }
 }
 
-function showTierToast(action: "saved" | "updated" | "removed", tier?: Tier) {
+function showPresetToast(action: "saved" | "updated" | "removed", preset?: Tier) {
     if (action === "removed") {
         showToast("Removed from MessageTiers.", Toasts.Type.SUCCESS);
         return;
     }
 
-    if (!tier) {
+    if (!preset) {
         showToast("MessageTiers updated.", Toasts.Type.SUCCESS);
         return;
     }
 
-    const label = getTierLabel(tier);
+    const label = getTierLabel(preset);
     if (action === "saved") {
         showToast(`Saved to ${label}.`, Toasts.Type.SUCCESS);
         return;
@@ -52,38 +52,50 @@ function showTierToast(action: "saved" | "updated" | "removed", tier?: Tier) {
     showToast(`Moved to ${label}.`, Toasts.Type.SUCCESS);
 }
 
-function saveMessageToTier(message: Message, tier: Tier) {
+function saveMessageToPreset(message: Message, preset: Tier) {
     const input = createSaveMessageInput(message);
     const existing = getByMessageId(message.id);
-    const result = upsertWithTier(input, tier);
+    const result = upsertWithTier(input, preset);
 
     rerenderMessage(message);
-    showTierToast(existing ? "updated" : "saved", tier);
+    showPresetToast(existing ? "updated" : "saved", preset);
 
     if (result.evicted) showLimitToast();
 }
 
-function cycleMessageTier(message: Message) {
+function cycleMessagePreset(message: Message) {
     const input = createSaveMessageInput(message);
     const result = cycleTier(input);
 
     rerenderMessage(message);
-    showTierToast(result.action, result.tier);
+    showPresetToast(result.action, result.tier);
 
     if (result.evicted) showLimitToast();
 }
 
-function removeMessageTier(message: Message) {
+function removeMessagePreset(message: Message) {
     const removed = remove(message.id);
     if (!removed) return;
 
     rerenderMessage(message);
-    showTierToast("removed");
+    showPresetToast("removed");
 }
 
-function getPopoverLabel(currentTier: TierState) {
-    if (currentTier === 0) return `Save to ${getTierLabel(1)}`;
-    if (currentTier < 9) return `Move to ${getTierLabel((currentTier + 1) as Tier)}`;
+function getPopoverLabel(currentPreset: TierState) {
+    const activePresetCount = getActivePresetCount();
+
+    if (currentPreset === 0) {
+        return `Save to ${getTierLabel(1)}`;
+    }
+
+    if (currentPreset > activePresetCount) {
+        return `Move to ${getTierLabel(1)}`;
+    }
+
+    if (currentPreset < activePresetCount) {
+        return `Move to ${getTierLabel((currentPreset + 1) as Tier)}`;
+    }
+
     return "Clear MessageTiers entry";
 }
 
@@ -110,27 +122,19 @@ const messageContextPatch: NavContextMenuPatchCallback = (children, { message }:
 
     const targetGroup = findGroupChildrenByChildId(["copy-link", "mark-unread"], children) ?? children;
     const isSaved = Boolean(getByMessageId(message.id));
+    const activePresets = getActivePresetIds();
 
     targetGroup.push(
         <Menu.MenuItem id="vc-messagetiers-save-root" label="Save to MessageTiers">
-            <Menu.MenuItem
-                id="vc-messagetiers-tier-1"
-                label={`Tier 1 - ${getTierLabel(1)}`}
-                action={() => saveMessageToTier(message, 1)}
-                icon={makeTierIcon(1)}
-            />
-            <Menu.MenuItem
-                id="vc-messagetiers-tier-2"
-                label={`Tier 2 - ${getTierLabel(2)}`}
-                action={() => saveMessageToTier(message, 2)}
-                icon={makeTierIcon(2)}
-            />
-            <Menu.MenuItem
-                id="vc-messagetiers-tier-3"
-                label={`Tier 3 - ${getTierLabel(3)}`}
-                action={() => saveMessageToTier(message, 3)}
-                icon={makeTierIcon(3)}
-            />
+            {activePresets.map(preset => (
+                <Menu.MenuItem
+                    key={preset}
+                    id={`vc-messagetiers-preset-${preset}`}
+                    label={getTierLabel(preset)}
+                    action={() => saveMessageToPreset(message, preset)}
+                    icon={makeTierIcon(preset)}
+                />
+            ))}
         </Menu.MenuItem>
     );
 
@@ -140,7 +144,7 @@ const messageContextPatch: NavContextMenuPatchCallback = (children, { message }:
                 id="vc-messagetiers-remove"
                 label="Remove from MessageTiers"
                 color="danger"
-                action={() => removeMessageTier(message)}
+                action={() => removeMessagePreset(message)}
             />
         );
     }
@@ -158,7 +162,7 @@ const appNavContextPatch: NavContextMenuPatchCallback = children => {
 
 export default definePlugin({
     name: "MessageTiers",
-    description: "Tiered local message bookmarking with hover button, context actions, and a searchable viewer.",
+    description: "Preset-based local message bookmarking with hover button, context actions, and a searchable viewer.",
     authors: [{ name: "silverfox0338_", id: 1235005349883412550n }],
     dependencies: ["ContextMenuAPI", "MessagePopoverAPI", "MessageUpdaterAPI"],
     managedStyle: hardStyle,
@@ -196,13 +200,16 @@ export default definePlugin({
                 icon: makeTierIcon(tierState),
                 message,
                 channel,
-                onClick: () => cycleMessageTier(message)
+                onClick: () => cycleMessagePreset(message)
             };
         }
     },
 
     start() {
+        migratePresetSettings();
         // Access once to validate and sanitize persisted store structure.
         getAll();
     }
 });
+
+

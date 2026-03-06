@@ -1,6 +1,6 @@
 export type Tier = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type TierState = Tier | 0;
-export type TierFilter = "all" | Tier;
+export type TierFilter = "all" | "archived" | Tier;
 
 export type SavedAttachment = {
     url: string;

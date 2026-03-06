@@ -4,18 +4,25 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import { GuildStore, MessageActions, NavigationRouter, React, TabBar, Text, Toasts, showToast } from "@webpack/common";
 
-import settings from "../settings";
+import settings, { getActivePresetCount, getActivePresetIds, getTierLabel } from "../settings";
 import { filterByTier, getAll, remove, search, subscribeToStoreUpdates, upsertWithTier } from "../store/messageStore";
 import type { SaveMessageInput, SavedAttachment, SavedMessage, Tier, TierFilter } from "../types";
 
-const TierTabOrder: TierFilter[] = ["all", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 const CLICK_WINDOW_MS = 300;
 
-type ViewerUiSettings = {
-    tier1Label?: string;
-    tier2Label?: string;
-    tier3Label?: string;
-};
+const PresetSettingKeys = [
+    "tier1Label",
+    "tier2Label",
+    "tier3Label",
+    "tier4Label",
+    "tier5Label",
+    "tier6Label",
+    "tier7Label",
+    "tier8Label",
+    "tier9Label",
+    "activePresetCount",
+    "blurViewerContent"
+] as const;
 
 type ContextMenuState = {
     entry: SavedMessage;
@@ -24,12 +31,10 @@ type ContextMenuState = {
     showMoveMenu: boolean;
 };
 
-function getTabLabel(tab: TierFilter, ui: ViewerUiSettings) {
+function getTabLabel(tab: TierFilter) {
     if (tab === "all") return "All";
-    if (tab === 1) return ui.tier1Label || "Important";
-    if (tab === 2) return ui.tier2Label || "Quote";
-    if (tab === 3) return ui.tier3Label || "Favorite";
-    return `Preset ${tab}`;
+    if (tab === "archived") return "Archived";
+    return getTierLabel(tab);
 }
 
 function resolveServerName(entry: SavedMessage) {
@@ -137,7 +142,15 @@ function buildSaveInput(entry: SavedMessage): SaveMessageInput {
 }
 
 function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
-    const ui = settings.use(["tier1Label", "tier2Label", "tier3Label", "blurViewerContent"]);
+    const ui = settings.use([...PresetSettingKeys]);
+
+    const activePresetCount = getActivePresetCount();
+    const activePresets = React.useMemo(() => getActivePresetIds(), [ui.activePresetCount]);
+    const tabOrder = React.useMemo<TierFilter[]>(() => {
+        const tabs: TierFilter[] = ["all", ...activePresets];
+        if (activePresetCount < 9) tabs.push("archived");
+        return tabs;
+    }, [activePresets, activePresetCount]);
 
     const [activeTab, setActiveTab] = React.useState<TierFilter>("all");
     const [query, setQuery] = React.useState("");
@@ -150,6 +163,17 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     const tripleTriggerRef = React.useRef<{ messageId: string; at: number; } | null>(null);
 
     React.useEffect(() => subscribeToStoreUpdates(() => bumpVersion()), []);
+
+    React.useEffect(() => {
+        if (activeTab === "archived" && activePresetCount >= 9) {
+            setActiveTab("all");
+            return;
+        }
+
+        if (typeof activeTab === "number" && activeTab > activePresetCount) {
+            setActiveTab("all");
+        }
+    }, [activeTab, activePresetCount]);
 
     React.useEffect(() => {
         if (!contextMenu) return;
@@ -185,9 +209,9 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     }, []);
 
     const entries = React.useMemo(() => {
-        const tierFiltered = filterByTier(activeTab, getAll());
+        const tierFiltered = filterByTier(activeTab, getAll(), activePresetCount);
         return search(query, tierFiltered);
-    }, [activeTab, query, version]);
+    }, [activeTab, query, version, activePresetCount]);
 
     const onDownloadMedia = React.useCallback(async (entry: SavedMessage) => {
         const mediaAttachments = getMediaAttachments(entry);
@@ -359,9 +383,9 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
             showToast("MessageTiers: oldest saved message was removed to respect your max limit.", Toasts.Type.MESSAGE);
         }
 
-        showToast(`Moved to ${getTabLabel(tier, ui)}.`, Toasts.Type.SUCCESS);
+        showToast(`Moved to ${getTierLabel(tier)}.`, Toasts.Type.SUCCESS);
         setContextMenu(null);
-    }, [ui]);
+    }, []);
 
     return (
         <ModalRoot {...modalProps} size={ModalSize.LARGE} className="vc-messagetiers-modal-root" fullscreenOnMobile>
@@ -391,9 +415,9 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
                         onItemSelect={item => setActiveTab(item as TierFilter)}
                         style={{ marginBottom: 12 }}
                     >
-                        {TierTabOrder.map(tab => (
+                        {tabOrder.map(tab => (
                             <TabBar.Item key={String(tab)} id={tab}>
-                                {getTabLabel(tab, ui)}
+                                {getTabLabel(tab)}
                             </TabBar.Item>
                         ))}
                     </TabBar>
@@ -527,14 +551,14 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
 
                             {contextMenu.showMoveMenu && (
                                 <div data-vc-messagetiers-context-submenu>
-                                    {(TierTabOrder.filter(value => value !== "all") as Tier[]).map(tier => (
+                                    {activePresets.map(tier => (
                                         <button
                                             key={tier}
                                             data-vc-messagetiers-context-item
                                             type="button"
                                             onClick={event => moveEntryToTier(event, contextMenu.entry, tier)}
                                         >
-                                            {getTabLabel(tier, ui)}
+                                            {getTierLabel(tier)}
                                         </button>
                                     ))}
                                 </div>
@@ -595,3 +619,4 @@ export function openMessageTiersViewerModal() {
 }
 
 export default ViewerModal;
+

@@ -1,20 +1,21 @@
 import type { Message } from "@vencord/discord-types";
 import { ChannelStore, FluxDispatcher, GuildStore } from "@webpack/common";
 
-import settings, { DEFAULT_MAX_SAVED_MESSAGES } from "../settings";
+import settings, { DEFAULT_MAX_SAVED_MESSAGES, getActivePresetCount, MAX_PRESET_COUNT } from "../settings";
 import type {
     CycleTierResult,
     SaveMessageInput,
     SavedAttachment,
     SavedMessage,
     Tier,
+    TierFilter,
     UpsertResult
 } from "../types";
 
 const STORE_UPDATE_EVENT = "MESSAGETIERS_STORE_UPDATE";
 
 function isTier(value: unknown): value is Tier {
-    return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 9;
+    return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= MAX_PRESET_COUNT;
 }
 
 function toNumber(value: unknown, fallback: number) {
@@ -265,6 +266,7 @@ export function remove(messageId: string) {
 }
 
 export function cycleTier(input: SaveMessageInput): CycleTierResult {
+    const activePresetCount = getActivePresetCount();
     const existing = getByMessageId(input.messageId);
 
     if (!existing) {
@@ -277,7 +279,17 @@ export function cycleTier(input: SaveMessageInput): CycleTierResult {
         };
     }
 
-    if (existing.tier < 9) {
+    if (existing.tier > activePresetCount) {
+        const result = upsertWithTier(input, 1);
+        return {
+            action: result.action,
+            tier: 1,
+            entry: result.entry,
+            evicted: result.evicted
+        };
+    }
+
+    if (existing.tier < activePresetCount) {
         const nextTier = (existing.tier + 1) as Tier;
         const result = upsertWithTier(input, nextTier);
         return {
@@ -295,8 +307,19 @@ export function cycleTier(input: SaveMessageInput): CycleTierResult {
     };
 }
 
-export function filterByTier(tier: Tier | "all", source: SavedMessage[] = getAll()) {
-    if (tier === "all") return [...source];
+export function filterByTier(
+    tier: TierFilter,
+    source: SavedMessage[] = getAll(),
+    activePresetCount = getActivePresetCount()
+) {
+    if (tier === "all") {
+        return source.filter(entry => entry.tier <= activePresetCount);
+    }
+
+    if (tier === "archived") {
+        return source.filter(entry => entry.tier > activePresetCount);
+    }
+
     return source.filter(entry => entry.tier === tier);
 }
 
