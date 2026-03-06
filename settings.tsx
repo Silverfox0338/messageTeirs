@@ -72,5 +72,6 @@ export default settings;
 export function getTierLabel(tier: Tier) {
     if (tier === 1) return settings.store.tier1Label || "Important";
     if (tier === 2) return settings.store.tier2Label || "Quote";
-    return settings.store.tier3Label || "Favorite";
+    if (tier === 3) return settings.store.tier3Label || "Favorite";
+    return `Preset ${tier}`;
 }

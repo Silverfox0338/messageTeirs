@@ -5,6 +5,7 @@ import settings, { DEFAULT_MAX_SAVED_MESSAGES } from "../settings";
 import type {
     CycleTierResult,
     SaveMessageInput,
+    SavedAttachment,
     SavedMessage,
     Tier,
     UpsertResult
@@ -13,7 +14,7 @@ import type {
 const STORE_UPDATE_EVENT = "MESSAGETIERS_STORE_UPDATE";
 
 function isTier(value: unknown): value is Tier {
-    return value === 1 || value === 2 || value === 3;
+    return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 9;
 }
 
 function toNumber(value: unknown, fallback: number) {
@@ -29,6 +30,11 @@ function toNumber(value: unknown, fallback: number) {
         return Number.isFinite(ts) ? ts : fallback;
     }
 
+    if (value && typeof value === "object" && typeof (value as { valueOf?: () => unknown; }).valueOf === "function") {
+        const ts = (value as { valueOf: () => unknown; }).valueOf();
+        if (typeof ts === "number" && Number.isFinite(ts)) return ts;
+    }
+
     return fallback;
 }
 
@@ -38,21 +44,78 @@ function normalizeMaxSavedMessages() {
     return Math.floor(value);
 }
 
+function buildMessageLink(guildId: string | undefined, channelId: string, messageId: string) {
+    return `https://discord.com/channels/${guildId ?? "@me"}/${channelId}/${messageId}`;
+}
+
+function inferExtension(filename = "") {
+    const dot = filename.lastIndexOf(".");
+    if (dot === -1) return "";
+    return filename.slice(dot + 1).toLowerCase();
+}
+
+function normalizeAttachment(value: unknown): SavedAttachment | null {
+    if (!value || typeof value !== "object") return null;
+
+    const maybe = value as Partial<SavedAttachment>;
+    if (!maybe.url || typeof maybe.url !== "string") return null;
+
+    const filename = typeof maybe.filename === "string" ? maybe.filename : "";
+    const contentType = typeof maybe.contentType === "string" ? maybe.contentType : "";
+    const ext = inferExtension(filename);
+
+    const isGif = Boolean(maybe.isGif)
+        || contentType.toLowerCase().includes("gif")
+        || ext === "gif"
+        || maybe.url.toLowerCase().includes(".gif");
+
+    const isImage = Boolean(maybe.isImage)
+        || contentType.toLowerCase().startsWith("image/")
+        || ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"].includes(ext)
+        || /\.(png|jpe?g|webp|gif|bmp|avif)(\?|$)/i.test(maybe.url);
+
+    const isVideo = Boolean(maybe.isVideo)
+        || contentType.toLowerCase().startsWith("video/")
+        || ["mp4", "webm", "mov", "m4v", "mkv"].includes(ext)
+        || /\.(mp4|webm|mov|m4v|mkv)(\?|$)/i.test(maybe.url);
+
+    return {
+        url: maybe.url,
+        filename: filename || void 0,
+        contentType: contentType || void 0,
+        isImage,
+        isVideo,
+        isGif
+    };
+}
+
 function normalizeSavedMessage(value: unknown): SavedMessage | null {
     if (!value || typeof value !== "object") return null;
 
     const maybe = value as Partial<SavedMessage>;
     if (!maybe.messageId || !maybe.channelId || !maybe.authorId || !maybe.authorTag || !isTier(maybe.tier)) return null;
 
+    const messageId = String(maybe.messageId);
+    const channelId = String(maybe.channelId);
+    const guildId = maybe.guildId ? String(maybe.guildId) : void 0;
+
+    const attachments = Array.isArray(maybe.attachments)
+        ? maybe.attachments.map(normalizeAttachment).filter((entry): entry is SavedAttachment => entry !== null)
+        : [];
+
     return {
-        messageId: String(maybe.messageId),
-        channelId: String(maybe.channelId),
-        guildId: maybe.guildId ? String(maybe.guildId) : void 0,
+        messageId,
+        channelId,
+        guildId,
+        messageLink: typeof maybe.messageLink === "string" && maybe.messageLink.length > 0
+            ? maybe.messageLink
+            : buildMessageLink(guildId, channelId, messageId),
         content: typeof maybe.content === "string" ? maybe.content : "",
         authorId: String(maybe.authorId),
         authorTag: String(maybe.authorTag),
         timestamp: toNumber(maybe.timestamp, Date.now()),
         savedAt: toNumber(maybe.savedAt, Date.now()),
+        attachments,
         tier: maybe.tier
     };
 }
@@ -87,7 +150,13 @@ function getSanitizedStore() {
     const deduped = dedupeByMessageId(normalized);
 
     const changed = deduped.length !== raw.length
-        || deduped.some((entry, index) => raw[index]?.messageId !== entry.messageId || raw[index]?.savedAt !== entry.savedAt);
+        || deduped.some((entry, index) => {
+            const rawEntry = raw[index] as SavedMessage | undefined;
+            return rawEntry?.messageId !== entry.messageId
+                || rawEntry?.savedAt !== entry.savedAt
+                || rawEntry?.messageLink !== entry.messageLink
+                || rawEntry?.tier !== entry.tier;
+        });
 
     if (changed) saveStore(deduped, false);
 
@@ -137,7 +206,10 @@ export function upsertWithTier(input: SaveMessageInput, tier: Tier): UpsertResul
         content: typeof input.content === "string" ? input.content : "",
         authorId: String(input.authorId),
         authorTag: String(input.authorTag),
-        timestamp: toNumber(input.timestamp, now)
+        timestamp: toNumber(input.timestamp, now),
+        attachments: Array.isArray(input.attachments)
+            ? input.attachments.map(normalizeAttachment).filter((entry): entry is SavedAttachment => entry !== null)
+            : []
     };
 
     const messages = getSanitizedStore();
@@ -146,6 +218,7 @@ export function upsertWithTier(input: SaveMessageInput, tier: Tier): UpsertResul
     const entry: SavedMessage = {
         ...normalizedInput,
         savedAt: now,
+        messageLink: buildMessageLink(normalizedInput.guildId, normalizedInput.channelId, normalizedInput.messageId),
         tier
     };
 
@@ -204,21 +277,12 @@ export function cycleTier(input: SaveMessageInput): CycleTierResult {
         };
     }
 
-    if (existing.tier === 1) {
-        const result = upsertWithTier(input, 2);
+    if (existing.tier < 9) {
+        const nextTier = (existing.tier + 1) as Tier;
+        const result = upsertWithTier(input, nextTier);
         return {
             action: result.action,
-            tier: 2,
-            entry: result.entry,
-            evicted: result.evicted
-        };
-    }
-
-    if (existing.tier === 2) {
-        const result = upsertWithTier(input, 3);
-        return {
-            action: result.action,
-            tier: 3,
+            tier: nextTier,
             entry: result.entry,
             evicted: result.evicted
         };
@@ -261,24 +325,38 @@ function resolveAuthorTag(message: Message) {
         return `${author.username}#${author.discriminator}`;
     }
 
-    if ((author as any).globalName) {
-        return `${(author as any).globalName} (@${author.username})`;
+    if ((author as { globalName?: string; }).globalName) {
+        return `${(author as { globalName?: string; }).globalName} (@${author.username})`;
     }
 
     return `@${author.username}`;
 }
 
+function extractSavedAttachments(message: Message): SavedAttachment[] {
+    const rawAttachments = (message as { attachments?: Array<{ url?: string; filename?: string; content_type?: string; contentType?: string; }>; }).attachments;
+    if (!Array.isArray(rawAttachments)) return [];
+
+    return rawAttachments
+        .map(attachment => normalizeAttachment({
+            url: attachment.url,
+            filename: attachment.filename,
+            contentType: attachment.content_type ?? attachment.contentType
+        }))
+        .filter((entry): entry is SavedAttachment => entry !== null);
+}
+
 export function createSaveMessageInput(message: Message): SaveMessageInput {
     const channel = ChannelStore?.getChannel?.(message.channel_id);
-    const timestamp = toNumber((message as any).timestamp, Date.now());
+    const timestamp = toNumber((message as { timestamp?: unknown; }).timestamp, Date.now());
 
     return {
         messageId: message.id,
         channelId: message.channel_id,
-        guildId: (message as any).guild_id ?? channel?.guild_id ?? void 0,
+        guildId: (message as { guild_id?: string; }).guild_id ?? channel?.guild_id ?? void 0,
         content: typeof message.content === "string" ? message.content : "",
         authorId: message.author?.id ?? "0",
         authorTag: resolveAuthorTag(message),
-        timestamp
+        timestamp,
+        attachments: extractSavedAttachments(message)
     };
 }

@@ -1,139 +1,43 @@
 # MessageTiers (Vencord Userplugin)
 
-A local, tiered message bookmarking plugin for Vencord.
+Local message bookmarking for Discord with tiered saves and quick viewer actions.
 
 - Author: `silverfox0338_`
-- Author ID: `1235005349883412550n`
+- Author ID: `1235005349883412550`
 - Plugin name: `MessageTiers`
-- Folder name: `messageTeirs` (kept for compatibility with your current path)
 
-## What It Does
+## Core
 
-MessageTiers lets you save messages into three bookmark tiers and quickly get back to them later.
+- Save messages into tiers (1-9 supported in storage/viewer move actions)
+- Hover and context-menu save/remove actions
+- Searchable viewer modal with jump-to-message
+- Local-only storage via Vencord plugin settings
 
-Tier cycle on click:
+## Viewer interactions
 
-1. Unset -> Tier 1
-2. Tier 1 -> Tier 2
-3. Tier 2 -> Tier 3
-4. Tier 3 -> Unset (removed)
+- Single click: jump to message
+- Double click: insert into chat input (text, GIF, or stored message link)
+- Triple click: opens inline context menu with:
+  - Copy message content
+  - Copy message link
+  - Copy author tag
+  - Move to preset (1-9)
+  - Download attachment (media entries)
+  - Delete entry
 
-Default tier labels:
+## Media behavior
 
-- Tier 1: `Important`
-- Tier 2: `Quote`
-- Tier 3: `Favorite`
+- If an entry is media-only (photo/video) and cannot be inserted, viewer shows:
+  - `Can't insert media — click to download`
+- Download uses browser fetch/blob flow and supports multiple attachments sequentially.
 
-All labels are renameable in plugin settings.
+## Data shape
 
-## Quick Access (Bookmark Viewer)
+`SavedMessage` now includes:
+- `messageLink`
+- optional `attachments` metadata
 
-You can open the MessageTiers viewer from multiple fast entry points:
+## Notes
 
-- Top-right chat header Help button slot (same toolbar row as pin/thread/member list)
-- Plugin settings button: `Open MessageTiers Viewer`
-- App-level context menus:
-  - Guild context menu
-  - Group DM context menu
-  - Settings cog context menu
-- Vencord toolbox action: `Open MessageTiers`
-
-## Core Features
-
-- Message hover button that cycles tiers.
-- Message context menu actions:
-  - `Save to MessageTiers` with direct Tier 1/2/3 submenu
-  - `Remove from MessageTiers` for saved entries
-- Viewer modal with:
-  - `All`, `Tier 1`, `Tier 2`, `Tier 3` tabs
-  - Search by message content, author tag, and server name
-  - One-click jump to the original message
-  - Per-entry delete action
-- Toast feedback for save/update/remove actions.
-- Automatic oldest-entry eviction when save limit is reached.
-
-## Data Model
-
-```ts
-type SavedMessage = {
-    messageId: string;
-    channelId: string;
-    guildId?: string;
-    content: string;
-    authorId: string;
-    authorTag: string;
-    timestamp: number;
-    savedAt: number;
-    tier: 1 | 2 | 3;
-};
-```
-
-## Storage and Privacy
-
-- Uses Vencord `definePluginSettings` + `withPrivateSettings`.
-- Uses `OptionType.CUSTOM` for local saved message storage.
-- No external API calls.
-- No data is stored that is not already visible in Discord UI.
-
-## Settings
-
-- `tier1Label` (string)
-- `tier2Label` (string)
-- `tier3Label` (string)
-- `maxSavedMessages` (number, default `500`)
-- `showHoverButton` (boolean, default `true`)
-- `blurViewerContent` (boolean, default `false`)
-
-## CSS Hardening Against Custom Themes
-
-This plugin includes a managed stylesheet (`styles.css?managed`) to reduce interference from user custom CSS.
-
-Hardening strategy:
-
-- Dedicated scoped selectors with `data-vc-messagetiers-*` attributes
-- Layered scoped selectors plus explicit component styling
-- Strong override priority with `!important` where needed
-- Isolated icon and viewer containers (`isolation: isolate`)
-
-Note: no client-side UI can be made 100% untouchable against deliberate high-specificity/`!important` CSS targeting the same selectors, but this significantly improves resilience against normal theme overrides.
-
-## File Layout
-
-```text
-messageTeirs/
-  index.tsx
-  settings.tsx
-  types.ts
-  styles.css
-  store/
-    messageStore.ts
-  components/
-    TierButton.tsx
-    ViewerModal.tsx
-```
-
-## Install in Vencord Source
-
-Place this folder under:
-
-```text
-src/userplugins/messageTeirs
-```
-
-Then rebuild/reload Vencord.
-
-## Development Notes
-
-- All injected React surfaces are wrapped with `ErrorBoundary.wrap`.
-- Store access goes through typed accessor functions in `store/messageStore.ts`.
-- Internal Discord calls use silent fallbacks where appropriate.
-
-## Planned Enhancements
-
-- Export/import bookmarks
-- Optional per-tier sort modes
-- Richer filtering (date ranges, per-server toggles)
-- Optional pinning of specific saved entries
-
-
-
+- CSS is scoped with `data-vc-messagetiers-*` selectors for better custom-theme resilience.
+- All Discord internals use silent fallbacks where possible.

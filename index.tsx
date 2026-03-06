@@ -82,8 +82,7 @@ function removeMessageTier(message: Message) {
 
 function getPopoverLabel(currentTier: TierState) {
     if (currentTier === 0) return `Save to ${getTierLabel(1)}`;
-    if (currentTier === 1) return `Move to ${getTierLabel(2)}`;
-    if (currentTier === 2) return `Move to ${getTierLabel(3)}`;
+    if (currentTier < 9) return `Move to ${getTierLabel((currentTier + 1) as Tier)}`;
     return "Clear MessageTiers entry";
 }
 
@@ -201,3 +200,5 @@ export default definePlugin({
 
     openViewerFromHeader: quickOpenViewer
 });
+
+

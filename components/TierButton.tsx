@@ -54,12 +54,22 @@ export function TierThreeIcon({ width = 18, height = 18, className }: IconProps)
     );
 }
 
-const TierColors: Record<TierState, string> = {
-    0: "var(--interactive-muted, #80848e)",
+const TierPalette: Record<number, string> = {
     1: "var(--text-warning, #f0b232)",
     2: "var(--text-link, #5da9ff)",
-    3: "var(--yellow-300, #e7b85a)"
+    3: "var(--yellow-300, #e7b85a)",
+    4: "var(--green-360, #3ba55d)",
+    5: "var(--status-positive, #43b581)",
+    6: "var(--red-345, #e05252)",
+    7: "var(--brand-500, #5865f2)",
+    8: "var(--orange-430, #f78b1f)",
+    9: "var(--teal-360, #1abc9c)"
 };
+
+function getTierColor(tier: TierState) {
+    if (tier === 0) return "var(--interactive-muted, #80848e)";
+    return TierPalette[tier] ?? TierPalette[1];
+}
 
 interface TierButtonProps extends IconProps {
     tier: TierState;
@@ -72,13 +82,15 @@ function TierButtonComponent({ tier, width = 18, height = 18, className }: TierB
             ? TierTwoIcon
             : tier === 3
                 ? TierThreeIcon
-                : UnsetTierIcon;
+                : tier > 0
+                    ? TierOneIcon
+                    : UnsetTierIcon;
 
     return (
         <span
             data-vc-messagetiers-icon
             className={className}
-            style={{ color: TierColors[tier], display: "inline-flex", lineHeight: 0, isolation: "isolate" }}
+            style={{ color: getTierColor(tier), display: "inline-flex", lineHeight: 0, isolation: "isolate" }}
         >
             <Icon width={width} height={height} />
         </span>
