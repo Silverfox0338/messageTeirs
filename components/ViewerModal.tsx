@@ -63,7 +63,7 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     }, [activeTab, query, version]);
 
     return (
-        <ModalRoot {...modalProps} size={ModalSize.DYNAMIC}>
+        <ModalRoot {...modalProps} size={ModalSize.LARGE} className="vc-messagetiers-modal-root" fullscreenOnMobile>
             <ModalHeader>
                 <Text variant="heading-lg/semibold" style={{ flexGrow: 1 }}>
                     MessageTiers Viewer
@@ -71,8 +71,8 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
                 <ModalCloseButton onClick={modalProps.onClose} />
             </ModalHeader>
 
-            <ModalContent>
-                <div data-vc-messagetiers-root style={{ isolation: "isolate" }}>
+            <ModalContent className="vc-messagetiers-modal-content">
+                <div data-vc-messagetiers-root>
                     <div data-vc-messagetiers-search-wrap>
                         <input
                             data-vc-messagetiers-search

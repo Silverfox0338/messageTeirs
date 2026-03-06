@@ -30,7 +30,7 @@ All labels are renameable in plugin settings.
 
 You can open the MessageTiers viewer from multiple fast entry points:
 
-- Global hotkey (default): `Ctrl+Shift+B` (configurable)
+- Top-right chat header Help button slot (same toolbar row as pin/thread/member list)
 - Plugin settings button: `Open MessageTiers Viewer`
 - App-level context menus:
   - Guild context menu
@@ -83,8 +83,6 @@ type SavedMessage = {
 - `maxSavedMessages` (number, default `500`)
 - `showHoverButton` (boolean, default `true`)
 - `blurViewerContent` (boolean, default `false`)
-- `enableQuickOpenHotkey` (boolean, default `true`)
-- `quickOpenHotkey` (string, default `Ctrl+Shift+B`)
 
 ## CSS Hardening Against Custom Themes
 
@@ -93,7 +91,7 @@ This plugin includes a managed stylesheet (`styles.css?managed`) to reduce inter
 Hardening strategy:
 
 - Dedicated scoped selectors with `data-vc-messagetiers-*` attributes
-- Reset and normalization on the viewer root (`all: initial` + explicit defaults)
+- Layered scoped selectors plus explicit component styling
 - Strong override priority with `!important` where needed
 - Isolated icon and viewer containers (`isolation: isolate`)
 
@@ -136,3 +134,6 @@ Then rebuild/reload Vencord.
 - Optional per-tier sort modes
 - Richer filtering (date ranges, per-server toggles)
 - Optional pinning of specific saved entries
+
+
+

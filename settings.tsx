@@ -6,7 +6,6 @@ import { OptionType } from "@utils/types";
 import type { SavedMessage, Tier } from "./types";
 
 export const DEFAULT_MAX_SAVED_MESSAGES = 500;
-export const DEFAULT_QUICK_OPEN_HOTKEY = "Ctrl+Shift+B";
 
 const OpenViewerButton = ErrorBoundary.wrap(() => (
     <Button
@@ -51,16 +50,6 @@ const settings = definePluginSettings({
         description: "Blur message content in the MessageTiers viewer.",
         default: false
     },
-    enableQuickOpenHotkey: {
-        type: OptionType.BOOLEAN,
-        description: "Enable a global hotkey to open MessageTiers quickly.",
-        default: true
-    },
-    quickOpenHotkey: {
-        type: OptionType.STRING,
-        description: "Hotkey format: Ctrl+Shift+B, Alt+K, Ctrl+Alt+M.",
-        default: DEFAULT_QUICK_OPEN_HOTKEY
-    },
     openViewer: {
         type: OptionType.COMPONENT,
         component: OpenViewerButton
@@ -73,10 +62,6 @@ const settings = definePluginSettings({
     maxSavedMessages: {
         isValid: value => (Number.isFinite(value) && value > 0)
             || "Max saved messages must be a number greater than 0."
-    },
-    quickOpenHotkey: {
-        isValid: value => (typeof value === "string" && value.trim().length > 0)
-            || "Quick open hotkey cannot be empty."
     }
 }).withPrivateSettings<{
     savedMessages: SavedMessage[];

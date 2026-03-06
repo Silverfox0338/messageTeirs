@@ -1,13 +1,12 @@
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { updateMessage } from "@api/MessageUpdater";
-import { IS_MAC } from "@utils/constants";
 import definePlugin from "@utils/types";
 import type { Message } from "@vencord/discord-types";
 import { ChannelStore, Menu, Toasts, showToast } from "@webpack/common";
 
 import { makeTierIcon } from "./components/TierButton";
 import { openMessageTiersViewerModal } from "./components/ViewerModal";
-import settings, { DEFAULT_QUICK_OPEN_HOTKEY, getTierLabel } from "./settings";
+import settings, { getTierLabel } from "./settings";
 import {
     createSaveMessageInput,
     cycleTier,
@@ -19,14 +18,6 @@ import {
 import type { Tier, TierState } from "./types";
 
 import hardStyle from "./styles.css?managed";
-
-type ParsedHotkey = {
-    ctrl: boolean;
-    shift: boolean;
-    alt: boolean;
-    meta: boolean;
-    key: string;
-};
 
 function showLimitToast() {
     showToast("MessageTiers: oldest saved message was removed to respect your max limit.", Toasts.Type.MESSAGE);
@@ -96,107 +87,9 @@ function getPopoverLabel(currentTier: TierState) {
     return "Clear MessageTiers entry";
 }
 
-function normalizeHotkeyKey(raw: string) {
-    const key = raw.trim().toLowerCase();
-    if (!key) return "";
-
-    if (key === "space") return " ";
-    if (key === "esc") return "escape";
-
-    return key;
-}
-
-function parseHotkey(value: string): ParsedHotkey | null {
-    const segments = value
-        .split("+")
-        .map(segment => segment.trim().toLowerCase())
-        .filter(Boolean);
-
-    if (!segments.length) return null;
-
-    const hotkey: ParsedHotkey = {
-        ctrl: false,
-        shift: false,
-        alt: false,
-        meta: false,
-        key: ""
-    };
-
-    for (const segment of segments) {
-        if (segment === "ctrl" || segment === "control") {
-            hotkey.ctrl = true;
-            continue;
-        }
-
-        if (segment === "shift") {
-            hotkey.shift = true;
-            continue;
-        }
-
-        if (segment === "alt" || segment === "option") {
-            hotkey.alt = true;
-            continue;
-        }
-
-        if (segment === "meta" || segment === "cmd" || segment === "command" || segment === "super") {
-            hotkey.meta = true;
-            continue;
-        }
-
-        hotkey.key = normalizeHotkeyKey(segment);
-    }
-
-    if (!hotkey.key) return null;
-    return hotkey;
-}
-
-function getResolvedHotkey() {
-    return parseHotkey(settings.store.quickOpenHotkey || "")
-        ?? parseHotkey(DEFAULT_QUICK_OPEN_HOTKEY);
-}
-
-function isEditingElement(target: EventTarget | null) {
-    const element = target as HTMLElement | null;
-    if (!element) return false;
-
-    if (element.isContentEditable) return true;
-
-    const tagName = element.tagName.toLowerCase();
-    return tagName === "input" || tagName === "textarea" || tagName === "select";
-}
-
-function matchesHotkey(event: KeyboardEvent, hotkey: ParsedHotkey) {
-    const primaryCtrlPressed = IS_MAC ? event.metaKey : event.ctrlKey;
-
-    if (primaryCtrlPressed !== hotkey.ctrl) return false;
-    if (event.shiftKey !== hotkey.shift) return false;
-    if (event.altKey !== hotkey.alt) return false;
-
-    const secondaryMetaPressed = IS_MAC ? event.ctrlKey : event.metaKey;
-    if (secondaryMetaPressed !== hotkey.meta) return false;
-
-    const pressedKey = normalizeHotkeyKey(event.key);
-    return pressedKey === hotkey.key;
-}
-
 function quickOpenViewer() {
     openMessageTiersViewerModal();
 }
-
-const quickOpenHotkeyListener = (event: KeyboardEvent) => {
-    if (!settings.store.enableQuickOpenHotkey) return;
-    if (event.repeat) return;
-    if (isEditingElement(event.target)) return;
-
-    const hotkey = getResolvedHotkey();
-    if (!hotkey) return;
-
-    if (matchesHotkey(event, hotkey)) {
-        event.preventDefault();
-        event.stopPropagation();
-        quickOpenViewer();
-    }
-};
 
 const messageContextPatch: NavContextMenuPatchCallback = (children, { message }: { message?: Message; }) => {
     if (!message) return;
@@ -257,6 +150,18 @@ export default definePlugin({
     managedStyle: hardStyle,
     settings,
 
+    patches: [
+        {
+            // Replace the top-right Help button action with opening MessageTiers.
+            // This places quick access in the same toolbar row as pin/threads/member list.
+            find: 'navId:"staff-help-popout"',
+            replacement: {
+                match: /(isShown.+?)onClick:\i/,
+                replace: (_, rest) => `${rest}onClick:()=>$self.openViewerFromHeader()`
+            }
+        }
+    ],
+
     contextMenus: {
         message: messageContextPatch,
         "message-actions": messageContextPatch,
@@ -292,11 +197,7 @@ export default definePlugin({
     start() {
         // Access once to validate and sanitize persisted store structure.
         getAll();
-
-        window.addEventListener("keydown", quickOpenHotkeyListener, true);
     },
 
-    stop() {
-        window.removeEventListener("keydown", quickOpenHotkeyListener, true);
-    }
+    openViewerFromHeader: quickOpenViewer
 });
