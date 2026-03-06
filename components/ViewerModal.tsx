@@ -5,11 +5,14 @@ import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, Mod
 import { GuildStore, MessageActions, NavigationRouter, React, TabBar, Text, Toasts, showToast } from "@webpack/common";
 
 import settings, {
-    getActivePresetCount,
-    getActivePresetIds,
+    getPresetDisplayLabel,
     getTierLabel,
-    setActivePresetCount,
-    setPresetLabel
+    getVisiblePresetIds,
+    isPresetNsfw,
+    isPresetVisible,
+    setPresetLabel,
+    setPresetNsfw,
+    setPresetVisible
 } from "../settings";
 import { filterByTier, getAll, remove, search, subscribeToStoreUpdates, upsertWithTier } from "../store/messageStore";
 import type { SaveMessageInput, SavedAttachment, SavedMessage, Tier, TierFilter } from "../types";
@@ -29,7 +32,24 @@ const PresetSettingKeys = [
     "tier7Label",
     "tier8Label",
     "tier9Label",
-    "activePresetCount",
+    "preset1Visible",
+    "preset2Visible",
+    "preset3Visible",
+    "preset4Visible",
+    "preset5Visible",
+    "preset6Visible",
+    "preset7Visible",
+    "preset8Visible",
+    "preset9Visible",
+    "preset1Nsfw",
+    "preset2Nsfw",
+    "preset3Nsfw",
+    "preset4Nsfw",
+    "preset5Nsfw",
+    "preset6Nsfw",
+    "preset7Nsfw",
+    "preset8Nsfw",
+    "preset9Nsfw",
     "blurViewerContent",
     "showHoverButton"
 ] as const;
@@ -44,7 +64,7 @@ type ContextMenuState = {
 function getTabLabel(tab: TierFilter) {
     if (tab === "all") return "All";
     if (tab === "archived") return "Archived";
-    return getTierLabel(tab);
+    return getPresetDisplayLabel(tab);
 }
 
 function resolveServerName(entry: SavedMessage) {
@@ -154,9 +174,19 @@ function buildSaveInput(entry: SavedMessage): SaveMessageInput {
 function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     const ui = settings.use([...PresetSettingKeys]);
 
-    const activePresetCount = getActivePresetCount();
-    const activePresets = React.useMemo(() => getActivePresetIds(), [ui.activePresetCount]);
-    const tabOrder = React.useMemo<TierFilter[]>(() => ["all", ...activePresets], [activePresets]);
+    const visiblePresets = React.useMemo(() => getVisiblePresetIds(), [
+        ui.preset1Visible,
+        ui.preset2Visible,
+        ui.preset3Visible,
+        ui.preset4Visible,
+        ui.preset5Visible,
+        ui.preset6Visible,
+        ui.preset7Visible,
+        ui.preset8Visible,
+        ui.preset9Visible
+    ]);
+
+    const tabOrder = React.useMemo<TierFilter[]>(() => ["all", ...visiblePresets], [visiblePresets]);
 
     const [activeTab, setActiveTab] = React.useState<TierFilter>("all");
     const [query, setQuery] = React.useState("");
@@ -172,10 +202,10 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     React.useEffect(() => subscribeToStoreUpdates(() => bumpVersion()), []);
 
     React.useEffect(() => {
-        if (typeof activeTab === "number" && activeTab > activePresetCount) {
+        if (typeof activeTab === "number" && !visiblePresets.includes(activeTab)) {
             setActiveTab("all");
         }
-    }, [activeTab, activePresetCount]);
+    }, [activeTab, visiblePresets]);
 
     React.useEffect(() => {
         if (!contextMenu) return;
@@ -211,18 +241,15 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     }, []);
 
     const entries = React.useMemo(() => {
-        const presetFiltered = filterByTier(activeTab, getAll(), activePresetCount);
+        const presetFiltered = filterByTier(activeTab, getAll());
         return search(query, presetFiltered);
-    }, [activeTab, query, version, activePresetCount]);
+    }, [activeTab, query, version]);
 
     const openContextMenuAt = React.useCallback((entry: SavedMessage, x: number, y: number) => {
-        const maxX = typeof window !== "undefined" ? window.innerWidth - 240 : x;
-        const maxY = typeof window !== "undefined" ? window.innerHeight - 160 : y;
-
         setContextMenu({
             entry,
-            x: Math.max(8, Math.min(maxX, x)),
-            y: Math.max(8, Math.min(maxY, y)),
+            x,
+            y,
             showMoveMenu: false
         });
     }, []);
@@ -413,7 +440,7 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
             showToast("MessageTiers: oldest saved message was removed to respect your max limit.", Toasts.Type.MESSAGE);
         }
 
-        showToast(`Moved to ${getTierLabel(tier)}.`, Toasts.Type.SUCCESS);
+        showToast(`Moved to ${getPresetDisplayLabel(tier)}.`, Toasts.Type.SUCCESS);
         setContextMenu(null);
     }, []);
 
@@ -422,11 +449,13 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
         bumpVersion();
     }, []);
 
-    const updatePresetCount = React.useCallback((value: string) => {
-        const next = Number.parseInt(value, 10);
-        if (!Number.isFinite(next)) return;
+    const togglePresetVisibility = React.useCallback((tier: Tier, visible: boolean) => {
+        setPresetVisible(tier, visible);
+        bumpVersion();
+    }, []);
 
-        setActivePresetCount(next);
+    const togglePresetNsfw = React.useCallback((tier: Tier, nsfw: boolean) => {
+        setPresetNsfw(tier, nsfw);
         bumpVersion();
     }, []);
 
@@ -465,45 +494,55 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
 
                     {showSettingsPanel && (
                         <div data-vc-messagetiers-settings>
-                            <div data-vc-messagetiers-settings-row>
-                                <label data-vc-messagetiers-settings-label>
-                                    Active Presets (1-9)
-                                    <input
-                                        data-vc-messagetiers-settings-input
-                                        type="number"
-                                        min={1}
-                                        max={9}
-                                        value={String(activePresetCount)}
-                                        onChange={event => updatePresetCount(event.currentTarget.value)}
-                                    />
-                                </label>
-
-                                <label data-vc-messagetiers-settings-check>
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(ui.blurViewerContent)}
-                                        onChange={event => {
-                                            settings.store.blurViewerContent = event.currentTarget.checked;
-                                            bumpVersion();
-                                        }}
-                                    />
-                                    Blur message content
-                                </label>
-                            </div>
+                            <Text variant="text-xs/normal" color="text-muted">
+                                Visible presets: {visiblePresets.length}/9
+                            </Text>
 
                             <div data-vc-messagetiers-preset-grid>
                                 {ALL_PRESET_IDS.map(tier => (
-                                    <label key={tier} data-vc-messagetiers-settings-label>
-                                        Preset {tier}
-                                        <input
-                                            data-vc-messagetiers-settings-input
-                                            type="text"
-                                            value={getTierLabel(tier)}
-                                            onChange={event => updatePresetLabel(tier, event.currentTarget.value)}
-                                        />
-                                    </label>
+                                    <div key={tier} data-vc-messagetiers-preset-row>
+                                        <label data-vc-messagetiers-settings-label>
+                                            Preset {tier}
+                                            <input
+                                                data-vc-messagetiers-settings-input
+                                                type="text"
+                                                value={getTierLabel(tier)}
+                                                onChange={event => updatePresetLabel(tier, event.currentTarget.value)}
+                                            />
+                                        </label>
+
+                                        <label data-vc-messagetiers-settings-check>
+                                            <input
+                                                type="checkbox"
+                                                checked={isPresetVisible(tier)}
+                                                onChange={event => togglePresetVisibility(tier, event.currentTarget.checked)}
+                                            />
+                                            Show
+                                        </label>
+
+                                        <label data-vc-messagetiers-settings-check>
+                                            <input
+                                                type="checkbox"
+                                                checked={isPresetNsfw(tier)}
+                                                onChange={event => togglePresetNsfw(tier, event.currentTarget.checked)}
+                                            />
+                                            NSFW
+                                        </label>
+                                    </div>
                                 ))}
                             </div>
+
+                            <label data-vc-messagetiers-settings-check>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(ui.blurViewerContent)}
+                                    onChange={event => {
+                                        settings.store.blurViewerContent = event.currentTarget.checked;
+                                        bumpVersion();
+                                    }}
+                                />
+                                Blur message content
+                            </label>
                         </div>
                     )}
 
@@ -652,14 +691,14 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
 
                             {contextMenu.showMoveMenu && (
                                 <div data-vc-messagetiers-context-submenu>
-                                    {activePresets.map(tier => (
+                                    {visiblePresets.map(tier => (
                                         <button
                                             key={tier}
                                             data-vc-messagetiers-context-item
                                             type="button"
                                             onClick={event => moveEntryToTier(event, contextMenu.entry, tier)}
                                         >
-                                            {getTierLabel(tier)}
+                                            {getPresetDisplayLabel(tier)}
                                         </button>
                                     ))}
                                 </div>
@@ -720,4 +759,3 @@ export function openMessageTiersViewerModal() {
 }
 
 export default ViewerModal;
-

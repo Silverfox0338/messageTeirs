@@ -7,7 +7,7 @@ import { ChannelStore, Menu, Toasts, showToast } from "@webpack/common";
 
 import { makeTierIcon, TierButton } from "./components/TierButton";
 import { openMessageTiersViewerModal } from "./components/ViewerModal";
-import settings, { getActivePresetCount, getActivePresetIds, getTierLabel, migratePresetSettings } from "./settings";
+import settings, { getPresetDisplayLabel, getTierLabel, getVisiblePresetIds, migratePresetSettings } from "./settings";
 import {
     createSaveMessageInput,
     cycleTier,
@@ -43,7 +43,7 @@ function showPresetToast(action: "saved" | "updated" | "removed", preset?: Tier)
         return;
     }
 
-    const label = getTierLabel(preset);
+    const label = getPresetDisplayLabel(preset);
     if (action === "saved") {
         showToast(`Saved to ${label}.`, Toasts.Type.SUCCESS);
         return;
@@ -82,18 +82,21 @@ function removeMessagePreset(message: Message) {
 }
 
 function getPopoverLabel(currentPreset: TierState) {
-    const activePresetCount = getActivePresetCount();
+    const visiblePresets = getVisiblePresetIds();
+    const firstPreset = visiblePresets[0] ?? 1;
 
     if (currentPreset === 0) {
-        return `Save to ${getTierLabel(1)}`;
+        return `Save to ${getTierLabel(firstPreset)}`;
     }
 
-    if (currentPreset > activePresetCount) {
-        return `Move to ${getTierLabel(1)}`;
+    const currentIndex = visiblePresets.indexOf(currentPreset as Tier);
+
+    if (currentIndex === -1) {
+        return `Move to ${getTierLabel(firstPreset)}`;
     }
 
-    if (currentPreset < activePresetCount) {
-        return `Move to ${getTierLabel((currentPreset + 1) as Tier)}`;
+    if (currentIndex < visiblePresets.length - 1) {
+        return `Move to ${getTierLabel(visiblePresets[currentIndex + 1])}`;
     }
 
     return "Clear MessageTiers entry";
@@ -122,7 +125,7 @@ const messageContextPatch: NavContextMenuPatchCallback = (children, { message }:
 
     const targetGroup = findGroupChildrenByChildId(["copy-link", "mark-unread"], children) ?? children;
     const isSaved = Boolean(getByMessageId(message.id));
-    const activePresets = getActivePresetIds();
+    const activePresets = getVisiblePresetIds();
 
     targetGroup.push(
         <Menu.MenuItem id="vc-messagetiers-save-root" label="Save to MessageTiers">
@@ -130,7 +133,7 @@ const messageContextPatch: NavContextMenuPatchCallback = (children, { message }:
                 <Menu.MenuItem
                     key={preset}
                     id={`vc-messagetiers-preset-${preset}`}
-                    label={getTierLabel(preset)}
+                    label={getPresetDisplayLabel(preset)}
                     action={() => saveMessageToPreset(message, preset)}
                     icon={makeTierIcon(preset)}
                 />
@@ -211,5 +214,3 @@ export default definePlugin({
         getAll();
     }
 });
-
-

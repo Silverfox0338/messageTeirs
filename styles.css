@@ -233,3 +233,11 @@
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
 }
 
+[data-vc-messagetiers-preset-row] {
+    display: grid !important;
+    gap: 6px !important;
+    border: 1px solid var(--background-modifier-accent, #4a4d52) !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+    background: var(--background-tertiary, #232428) !important;
+}

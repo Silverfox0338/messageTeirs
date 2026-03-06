@@ -1,7 +1,7 @@
 import type { Message } from "@vencord/discord-types";
 import { ChannelStore, FluxDispatcher, GuildStore } from "@webpack/common";
 
-import settings, { DEFAULT_MAX_SAVED_MESSAGES, getActivePresetCount, MAX_PRESET_COUNT } from "../settings";
+import settings, { DEFAULT_MAX_SAVED_MESSAGES, getVisiblePresetIds, MAX_PRESET_COUNT } from "../settings";
 import type {
     CycleTierResult,
     SaveMessageInput,
@@ -266,31 +266,34 @@ export function remove(messageId: string) {
 }
 
 export function cycleTier(input: SaveMessageInput): CycleTierResult {
-    const activePresetCount = getActivePresetCount();
+    const visiblePresets = getVisiblePresetIds();
+    const firstVisible = visiblePresets[0] ?? 1;
     const existing = getByMessageId(input.messageId);
 
     if (!existing) {
-        const result = upsertWithTier(input, 1);
+        const result = upsertWithTier(input, firstVisible);
         return {
             action: result.action,
-            tier: 1,
+            tier: firstVisible,
             entry: result.entry,
             evicted: result.evicted
         };
     }
 
-    if (existing.tier > activePresetCount) {
-        const result = upsertWithTier(input, 1);
+    const currentIndex = visiblePresets.indexOf(existing.tier);
+
+    if (currentIndex === -1) {
+        const result = upsertWithTier(input, firstVisible);
         return {
             action: result.action,
-            tier: 1,
+            tier: firstVisible,
             entry: result.entry,
             evicted: result.evicted
         };
     }
 
-    if (existing.tier < activePresetCount) {
-        const nextTier = (existing.tier + 1) as Tier;
+    if (currentIndex < visiblePresets.length - 1) {
+        const nextTier = visiblePresets[currentIndex + 1];
         const result = upsertWithTier(input, nextTier);
         return {
             action: result.action,
@@ -309,15 +312,15 @@ export function cycleTier(input: SaveMessageInput): CycleTierResult {
 
 export function filterByTier(
     tier: TierFilter,
-    source: SavedMessage[] = getAll(),
-    activePresetCount = getActivePresetCount()
+    source: SavedMessage[] = getAll()
 ) {
     if (tier === "all") {
         return [...source];
     }
 
     if (tier === "archived") {
-        return source.filter(entry => entry.tier > activePresetCount);
+        const visiblePresets = new Set(getVisiblePresetIds());
+        return source.filter(entry => !visiblePresets.has(entry.tier));
     }
 
     return source.filter(entry => entry.tier === tier);
@@ -383,4 +386,5 @@ export function createSaveMessageInput(message: Message): SaveMessageInput {
         attachments: extractSavedAttachments(message)
     };
 }
+
 

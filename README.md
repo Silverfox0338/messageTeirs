@@ -9,15 +9,16 @@ Local message bookmarking for Discord with renameable presets and quick viewer a
 ## Core
 
 - Save messages into presets (1-9 supported in storage)
-- Set active preset count (1-9); hidden presets act as archive
+- Set active preset visibility and NSFW flags per preset
 - Hover and context-menu save/remove actions
 - Quick-open viewer button in the chat text bar
 - Local-only storage via Vencord plugin settings
 
 ## Viewer
 
-- Tabs: `All` plus active preset tabs
+- Tabs: `All` plus currently visible preset tabs
 - Search by message content, author, or server
+- Per-preset visibility and NSFW flags can be edited in the viewer settings panel
 - Single click to jump, double click to insert, triple click context menu
 
 ## Notes
@@ -25,4 +26,3 @@ Local message bookmarking for Discord with renameable presets and quick viewer a
 - `SavedMessage` includes `messageLink` and optional `attachments`
 - CSS is scoped with `data-vc-messagetiers-*` selectors for custom-theme resilience
 - Discord internals use silent fallbacks where possible
-
