@@ -1,0 +1,91 @@
+[data-vc-messagetiers-root] {
+    all: initial !important;
+    display: block !important;
+    color: var(--text-normal, #dbdee1) !important;
+    font-family: var(--font-primary, "gg sans", "Segoe UI", sans-serif) !important;
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+}
+
+[data-vc-messagetiers-root] * {
+    box-sizing: border-box !important;
+    font-family: inherit !important;
+}
+
+[data-vc-messagetiers-search-wrap] {
+    display: flex !important;
+    gap: 8px !important;
+    margin: 0 0 12px !important;
+}
+
+[data-vc-messagetiers-search] {
+    all: unset !important;
+    width: 100% !important;
+    padding: 8px 10px !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--background-modifier-accent, #4a4d52) !important;
+    background: var(--input-background, #1e1f22) !important;
+    color: var(--text-normal, #dbdee1) !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+}
+
+[data-vc-messagetiers-search]::placeholder {
+    color: var(--text-muted, #949ba4) !important;
+}
+
+[data-vc-messagetiers-list] {
+    display: grid !important;
+    gap: 10px !important;
+}
+
+[data-vc-messagetiers-card] {
+    border: 1px solid var(--background-modifier-accent, #4a4d52) !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    cursor: pointer !important;
+    background: var(--background-secondary, #2b2d31) !important;
+    transition: border-color 120ms ease !important;
+}
+
+[data-vc-messagetiers-card]:hover {
+    border-color: var(--interactive-active, #ffffff) !important;
+}
+
+[data-vc-messagetiers-card-head] {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin: 0 0 6px !important;
+    align-items: center !important;
+}
+
+[data-vc-messagetiers-delete] {
+    all: unset !important;
+    color: var(--text-danger, #fa777c) !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+}
+
+[data-vc-messagetiers-meta] {
+    display: block !important;
+    margin: 0 !important;
+}
+
+[data-vc-messagetiers-content] {
+    margin-top: 6px !important;
+    color: var(--text-normal, #dbdee1) !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+}
+
+[data-vc-messagetiers-icon] {
+    display: inline-flex !important;
+    line-height: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+[data-vc-messagetiers-icon] svg {
+    display: block !important;
+}
