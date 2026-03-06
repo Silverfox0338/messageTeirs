@@ -16,7 +16,7 @@ Local message bookmarking for Discord with renameable presets and quick viewer a
 
 ## Viewer
 
-- Tabs: `All`, active preset tabs, and `Archived` when active count is below 9
+- Tabs: `All` plus active preset tabs
 - Search by message content, author, or server
 - Single click to jump, double click to insert, triple click context menu
 
@@ -25,3 +25,4 @@ Local message bookmarking for Discord with renameable presets and quick viewer a
 - `SavedMessage` includes `messageLink` and optional `attachments`
 - CSS is scoped with `data-vc-messagetiers-*` selectors for custom-theme resilience
 - Discord internals use silent fallbacks where possible
+

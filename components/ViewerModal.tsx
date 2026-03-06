@@ -4,11 +4,20 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import { GuildStore, MessageActions, NavigationRouter, React, TabBar, Text, Toasts, showToast } from "@webpack/common";
 
-import settings, { getActivePresetCount, getActivePresetIds, getTierLabel } from "../settings";
+import settings, {
+    getActivePresetCount,
+    getActivePresetIds,
+    getTierLabel,
+    setActivePresetCount,
+    setPresetLabel
+} from "../settings";
 import { filterByTier, getAll, remove, search, subscribeToStoreUpdates, upsertWithTier } from "../store/messageStore";
 import type { SaveMessageInput, SavedAttachment, SavedMessage, Tier, TierFilter } from "../types";
 
 const CLICK_WINDOW_MS = 300;
+const AUTHOR_NAME = "silverfox0338_";
+const AUTHOR_ID = "1235005349883412550";
+const ALL_PRESET_IDS: Tier[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 const PresetSettingKeys = [
     "tier1Label",
@@ -21,7 +30,8 @@ const PresetSettingKeys = [
     "tier8Label",
     "tier9Label",
     "activePresetCount",
-    "blurViewerContent"
+    "blurViewerContent",
+    "showHoverButton"
 ] as const;
 
 type ContextMenuState = {
@@ -146,14 +156,11 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
 
     const activePresetCount = getActivePresetCount();
     const activePresets = React.useMemo(() => getActivePresetIds(), [ui.activePresetCount]);
-    const tabOrder = React.useMemo<TierFilter[]>(() => {
-        const tabs: TierFilter[] = ["all", ...activePresets];
-        if (activePresetCount < 9) tabs.push("archived");
-        return tabs;
-    }, [activePresets, activePresetCount]);
+    const tabOrder = React.useMemo<TierFilter[]>(() => ["all", ...activePresets], [activePresets]);
 
     const [activeTab, setActiveTab] = React.useState<TierFilter>("all");
     const [query, setQuery] = React.useState("");
+    const [showSettingsPanel, setShowSettingsPanel] = React.useState(false);
     const [version, bumpVersion] = React.useReducer((value: number) => value + 1, 0);
     const [contextMenu, setContextMenu] = React.useState<ContextMenuState | null>(null);
 
@@ -165,11 +172,6 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     React.useEffect(() => subscribeToStoreUpdates(() => bumpVersion()), []);
 
     React.useEffect(() => {
-        if (activeTab === "archived" && activePresetCount >= 9) {
-            setActiveTab("all");
-            return;
-        }
-
         if (typeof activeTab === "number" && activeTab > activePresetCount) {
             setActiveTab("all");
         }
@@ -209,9 +211,21 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
     }, []);
 
     const entries = React.useMemo(() => {
-        const tierFiltered = filterByTier(activeTab, getAll(), activePresetCount);
-        return search(query, tierFiltered);
+        const presetFiltered = filterByTier(activeTab, getAll(), activePresetCount);
+        return search(query, presetFiltered);
     }, [activeTab, query, version, activePresetCount]);
+
+    const openContextMenuAt = React.useCallback((entry: SavedMessage, x: number, y: number) => {
+        const maxX = typeof window !== "undefined" ? window.innerWidth - 240 : x;
+        const maxY = typeof window !== "undefined" ? window.innerHeight - 160 : y;
+
+        setContextMenu({
+            entry,
+            x: Math.max(8, Math.min(maxX, x)),
+            y: Math.max(8, Math.min(maxY, y)),
+            showMoveMenu: false
+        });
+    }, []);
 
     const onDownloadMedia = React.useCallback(async (entry: SavedMessage) => {
         const mediaAttachments = getMediaAttachments(entry);
@@ -309,12 +323,7 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
                 at: Date.now()
             };
 
-            setContextMenu({
-                entry,
-                x: event.clientX,
-                y: event.clientY,
-                showMoveMenu: false
-            });
+            openContextMenuAt(entry, event.clientX, event.clientY);
 
             clickTrackerRef.current[entry.messageId] = tracker;
             return;
@@ -330,7 +339,7 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
         }, CLICK_WINDOW_MS);
 
         clickTrackerRef.current[entry.messageId] = tracker;
-    }, [modalProps.onClose]);
+    }, [modalProps.onClose, openContextMenuAt]);
 
     const onCardDoubleClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>, entry: SavedMessage) => {
         event.preventDefault();
@@ -348,6 +357,27 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
             onDoubleClickInsert(entry);
         }, CLICK_WINDOW_MS + 20);
     }, [onDoubleClickInsert]);
+
+    const onCardContextMenu = React.useCallback((event: React.MouseEvent<HTMLDivElement>, entry: SavedMessage) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const tracker = clickTrackerRef.current[entry.messageId];
+        if (tracker?.timeoutId) clearTimeout(tracker.timeoutId);
+        if (tracker) {
+            tracker.count = 0;
+            tracker.timeoutId = void 0;
+            clickTrackerRef.current[entry.messageId] = tracker;
+        }
+
+        const pending = pendingDoubleRef.current[entry.messageId];
+        if (pending) {
+            clearTimeout(pending);
+            delete pendingDoubleRef.current[entry.messageId];
+        }
+
+        openContextMenuAt(entry, event.clientX, event.clientY);
+    }, [openContextMenuAt]);
 
     const closeContextMenu = React.useCallback((event?: React.MouseEvent<HTMLElement>) => {
         if (event) {
@@ -387,12 +417,30 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
         setContextMenu(null);
     }, []);
 
+    const updatePresetLabel = React.useCallback((tier: Tier, value: string) => {
+        setPresetLabel(tier, value);
+        bumpVersion();
+    }, []);
+
+    const updatePresetCount = React.useCallback((value: string) => {
+        const next = Number.parseInt(value, 10);
+        if (!Number.isFinite(next)) return;
+
+        setActivePresetCount(next);
+        bumpVersion();
+    }, []);
+
     return (
         <ModalRoot {...modalProps} size={ModalSize.LARGE} className="vc-messagetiers-modal-root" fullscreenOnMobile>
             <ModalHeader>
-                <Text variant="heading-lg/semibold" style={{ flexGrow: 1 }}>
-                    MessageTiers Viewer
-                </Text>
+                <div style={{ flexGrow: 1 }}>
+                    <Text variant="heading-lg/semibold">
+                        MessageTiers Viewer
+                    </Text>
+                    <Text variant="text-xs/normal" color="text-muted">
+                        Author: {AUTHOR_NAME} ({AUTHOR_ID})
+                    </Text>
+                </div>
                 <ModalCloseButton onClick={modalProps.onClose} />
             </ModalHeader>
 
@@ -406,7 +454,58 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
                             onChange={event => setQuery(event.currentTarget.value)}
                             placeholder="Search by message content, author, or server"
                         />
+                        <button
+                            data-vc-messagetiers-settings-toggle
+                            type="button"
+                            onClick={() => setShowSettingsPanel(value => !value)}
+                        >
+                            {showSettingsPanel ? "Close Settings" : "Settings"}
+                        </button>
                     </div>
+
+                    {showSettingsPanel && (
+                        <div data-vc-messagetiers-settings>
+                            <div data-vc-messagetiers-settings-row>
+                                <label data-vc-messagetiers-settings-label>
+                                    Active Presets (1-9)
+                                    <input
+                                        data-vc-messagetiers-settings-input
+                                        type="number"
+                                        min={1}
+                                        max={9}
+                                        value={String(activePresetCount)}
+                                        onChange={event => updatePresetCount(event.currentTarget.value)}
+                                    />
+                                </label>
+
+                                <label data-vc-messagetiers-settings-check>
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(ui.blurViewerContent)}
+                                        onChange={event => {
+                                            settings.store.blurViewerContent = event.currentTarget.checked;
+                                            bumpVersion();
+                                        }}
+                                    />
+                                    Blur message content
+                                </label>
+                            </div>
+
+                            <div data-vc-messagetiers-preset-grid>
+                                {ALL_PRESET_IDS.map(tier => (
+                                    <label key={tier} data-vc-messagetiers-settings-label>
+                                        Preset {tier}
+                                        <input
+                                            data-vc-messagetiers-settings-input
+                                            type="text"
+                                            value={getTierLabel(tier)}
+                                            onChange={event => updatePresetLabel(tier, event.currentTarget.value)}
+                                        />
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <TabBar
                         type="top"
@@ -439,6 +538,7 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
                                     role="button"
                                     onClick={event => onCardClick(event, entry)}
                                     onDoubleClick={event => onCardDoubleClick(event, entry)}
+                                    onContextMenu={event => onCardContextMenu(event, entry)}
                                 >
                                     <div data-vc-messagetiers-card-head>
                                         <Text variant="text-sm/medium">{entry.authorTag}</Text>
@@ -498,10 +598,11 @@ function ViewerModalComponent({ modalProps }: { modalProps: ModalProps; }) {
                             ref={contextMenuRef}
                             data-vc-messagetiers-context
                             style={{
-                                top: Math.max(8, contextMenu.y),
-                                left: Math.max(8, contextMenu.x),
+                                top: contextMenu.y,
+                                left: contextMenu.x,
                                 position: "fixed"
                             }}
+                            onMouseLeave={() => setContextMenu(null)}
                             onClick={event => {
                                 event.preventDefault();
                                 event.stopPropagation();

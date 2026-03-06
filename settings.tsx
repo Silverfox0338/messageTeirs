@@ -138,7 +138,7 @@ function getRawTierLabel(tier: Tier): unknown {
     }
 }
 
-function setTierLabel(tier: Tier, value: string) {
+function writeTierLabel(tier: Tier, value: string) {
     switch (tier) {
         case 1: settings.store.tier1Label = value; break;
         case 2: settings.store.tier2Label = value; break;
@@ -152,11 +152,18 @@ function setTierLabel(tier: Tier, value: string) {
     }
 }
 
-export function getActivePresetCount() {
-    const rawValue = Number(settings.store.activePresetCount);
+function normalizeActivePresetCount(value: unknown) {
+    const rawValue = Number(value);
     if (!Number.isFinite(rawValue)) return DEFAULT_ACTIVE_PRESET_COUNT;
-
     return Math.min(MAX_PRESET_COUNT, Math.max(1, Math.floor(rawValue)));
+}
+
+export function getActivePresetCount() {
+    return normalizeActivePresetCount(settings.store.activePresetCount);
+}
+
+export function setActivePresetCount(value: number) {
+    settings.store.activePresetCount = normalizeActivePresetCount(value);
 }
 
 export function getActivePresetIds(): Tier[] {
@@ -168,6 +175,10 @@ export function getTierLabel(tier: Tier) {
     return normalizePresetLabel(getRawTierLabel(tier), `Preset ${tier}`);
 }
 
+export function setPresetLabel(tier: Tier, value: string) {
+    writeTierLabel(tier, normalizePresetLabel(value, `Preset ${tier}`));
+}
+
 export function migratePresetSettings() {
     for (let preset = 1; preset <= MAX_PRESET_COUNT; preset++) {
         const tier = preset as Tier;
@@ -177,15 +188,16 @@ export function migratePresetSettings() {
         if (tier <= 3) {
             const legacyDefault = LEGACY_PRESET_DEFAULTS[tier as 1 | 2 | 3];
             if (current === legacyDefault) {
-                setTierLabel(tier, defaultLabel);
+                writeTierLabel(tier, defaultLabel);
                 continue;
             }
         }
 
-        setTierLabel(tier, current);
+        writeTierLabel(tier, current);
     }
 
-    settings.store.activePresetCount = getActivePresetCount();
+    setActivePresetCount(getActivePresetCount());
 }
 
 export default settings;
+

@@ -7,7 +7,7 @@ export function UnsetTierIcon({ width = 18, height = 18, className }: IconProps)
     return (
         <svg width={width} height={height} viewBox="0 0 18 18" className={className} fill="none" aria-hidden="true">
             <path
-                d="M5 2.5h8a1.5 1.5 0 0 1 1.5 1.5v11.25c0 .58-.67.9-1.12.54L9 12.5l-4.38 3.29A.75.75 0 0 1 3.5 15.25V4A1.5 1.5 0 0 1 5 2.5Z"
+                d="M5.1 2.5h7.8A1.6 1.6 0 0 1 14.5 4.1v11c0 .56-.65.88-1.1.53L9 12.35l-4.4 3.28a.66.66 0 0 1-1.1-.53v-11c0-.88.72-1.6 1.6-1.6Z"
                 stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinejoin="round"
@@ -20,7 +20,7 @@ export function TierOneIcon({ width = 18, height = 18, className }: IconProps) {
     return (
         <svg width={width} height={height} viewBox="0 0 18 18" className={className} fill="none" aria-hidden="true">
             <path
-                d="M5 2.5h8a1.5 1.5 0 0 1 1.5 1.5v11.25c0 .58-.67.9-1.12.54L9 12.5l-4.38 3.29A.75.75 0 0 1 3.5 15.25V4A1.5 1.5 0 0 1 5 2.5Z"
+                d="M5.1 2.5h7.8A1.6 1.6 0 0 1 14.5 4.1v11c0 .56-.65.88-1.1.53L9 12.35l-4.4 3.28a.66.66 0 0 1-1.1-.53v-11c0-.88.72-1.6 1.6-1.6Z"
                 fill="currentColor"
             />
         </svg>
@@ -31,11 +31,11 @@ export function TierTwoIcon({ width = 18, height = 18, className }: IconProps) {
     return (
         <svg width={width} height={height} viewBox="0 0 18 18" className={className} fill="none" aria-hidden="true">
             <path
-                d="M3.25 4.75c0-1.1.9-2 2-2h7.5c1.1 0 2 .9 2 2v5.5c0 1.1-.9 2-2 2H8.8l-2.8 2.38c-.49.41-1.25.07-1.25-.57v-1.81H5.25c-1.1 0-2-.9-2-2v-5.5Z"
+                d="M3.2 4.85c0-1.2.98-2.18 2.18-2.18h7.24c1.2 0 2.18.98 2.18 2.18v4.96c0 1.2-.98 2.18-2.18 2.18H8.7l-2.76 2.33c-.5.42-1.26.06-1.26-.59V12H5.4c-1.2 0-2.18-.98-2.18-2.18V4.85Z"
                 fill="currentColor"
             />
             <path
-                d="M6.4 8.7h1.25V6.9H6.1V8c0 .38.18.58.3.7Zm3.7 0h1.25V6.9H9.8V8c0 .38.18.58.3.7Z"
+                d="M6.35 8.55h1.25V6.9H6.1V8.1c0 .32.1.43.25.45Zm4 0h1.25V6.9H10.1V8.1c0 .32.1.43.25.45Z"
                 fill="currentColor"
                 fillOpacity="0.5"
             />
@@ -47,7 +47,7 @@ export function TierThreeIcon({ width = 18, height = 18, className }: IconProps)
     return (
         <svg width={width} height={height} viewBox="0 0 18 18" className={className} fill="none" aria-hidden="true">
             <path
-                d="M9 15.15c-.2 0-.38-.06-.54-.17-2.47-1.74-4.21-3.24-5.2-4.51C2.35 9.33 1.9 8.27 1.9 7.22c0-2.18 1.74-3.92 3.92-3.92 1.23 0 2.33.57 3.04 1.47A3.92 3.92 0 0 1 11.9 3.3c2.18 0 3.92 1.74 3.92 3.92 0 1.05-.45 2.11-1.35 3.25-.99 1.27-2.73 2.77-5.2 4.51-.16.11-.34.17-.54.17Z"
+                d="M9 2.35c.2 0 .38.1.47.28l1.57 3.2c.07.14.2.24.36.26l3.54.52c.43.07.61.6.3.9l-2.55 2.5a.5.5 0 0 0-.15.44l.61 3.52c.08.44-.4.77-.8.56l-3.17-1.67a.54.54 0 0 0-.48 0l-3.17 1.67c-.4.21-.88-.12-.8-.56l.61-3.52a.5.5 0 0 0-.15-.44L2.66 7.5c-.31-.3-.13-.83.3-.9l3.54-.52a.5.5 0 0 0 .36-.26l1.57-3.2A.53.53 0 0 1 9 2.35Z"
                 fill="currentColor"
             />
         </svg>
@@ -104,3 +104,4 @@ export function makeTierIcon(tier: TierState) {
         return <TierButton tier={tier} {...props} />;
     };
 }
+

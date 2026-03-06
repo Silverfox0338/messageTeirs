@@ -313,7 +313,7 @@ export function filterByTier(
     activePresetCount = getActivePresetCount()
 ) {
     if (tier === "all") {
-        return source.filter(entry => entry.tier <= activePresetCount);
+        return [...source];
     }
 
     if (tier === "archived") {
@@ -383,3 +383,4 @@ export function createSaveMessageInput(message: Message): SaveMessageInput {
         attachments: extractSavedAttachments(message)
     };
 }
+

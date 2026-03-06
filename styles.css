@@ -157,3 +157,79 @@
     max-height: 180px !important;
     overflow-y: auto !important;
 }
+[data-vc-messagetiers-settings-toggle] {
+    all: unset !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 116px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--background-modifier-accent, #4a4d52) !important;
+    background: var(--background-secondary, #2b2d31) !important;
+    color: var(--text-normal, #dbdee1) !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+}
+
+[data-vc-messagetiers-settings-toggle]:hover {
+    background: var(--background-modifier-hover, #35373c) !important;
+}
+
+[data-vc-messagetiers-settings] {
+    border: 1px solid var(--background-modifier-accent, #4a4d52) !important;
+    border-radius: 10px !important;
+    padding: 10px !important;
+    margin: 0 0 12px !important;
+    background: var(--background-secondary, #2b2d31) !important;
+    display: grid !important;
+    gap: 10px !important;
+}
+
+[data-vc-messagetiers-settings-row] {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-end !important;
+    flex-wrap: wrap !important;
+}
+
+[data-vc-messagetiers-settings-label] {
+    display: grid !important;
+    gap: 6px !important;
+    color: var(--text-normal, #dbdee1) !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+}
+
+[data-vc-messagetiers-settings-input] {
+    all: unset !important;
+    box-sizing: border-box !important;
+    min-width: 140px !important;
+    width: 100% !important;
+    height: 32px !important;
+    padding: 0 10px !important;
+    border-radius: 7px !important;
+    border: 1px solid var(--background-modifier-accent, #4a4d52) !important;
+    background: var(--input-background, #1e1f22) !important;
+    color: var(--text-normal, #dbdee1) !important;
+    font-size: 13px !important;
+    line-height: 32px !important;
+}
+
+[data-vc-messagetiers-settings-check] {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    color: var(--text-normal, #dbdee1) !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+}
+
+[data-vc-messagetiers-preset-grid] {
+    display: grid !important;
+    gap: 8px !important;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
