@@ -10,6 +10,7 @@ Local message bookmarking for Discord with tiered saves and quick viewer actions
 
 - Save messages into tiers (1-9 supported in storage/viewer move actions)
 - Hover and context-menu save/remove actions
+- Quick-open viewer button in the chat text bar
 - Searchable viewer modal with jump-to-message
 - Local-only storage via Vencord plugin settings
 

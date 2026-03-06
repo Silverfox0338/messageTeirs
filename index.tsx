@@ -1,10 +1,11 @@
+import { ChatBarButton, ChatBarButtonFactory } from "@api/ChatButtons";
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { updateMessage } from "@api/MessageUpdater";
 import definePlugin from "@utils/types";
 import type { Message } from "@vencord/discord-types";
 import { ChannelStore, Menu, Toasts, showToast } from "@webpack/common";
 
-import { makeTierIcon } from "./components/TierButton";
+import { makeTierIcon, TierButton } from "./components/TierButton";
 import { openMessageTiersViewerModal } from "./components/ViewerModal";
 import settings, { getTierLabel } from "./settings";
 import {
@@ -90,6 +91,20 @@ function quickOpenViewer() {
     openMessageTiersViewerModal();
 }
 
+const OpenViewerChatBarButton: ChatBarButtonFactory = ({ isAnyChat }) => {
+    if (!isAnyChat) return null;
+
+    return (
+        <ChatBarButton
+            tooltip="Open MessageTiers"
+            onClick={quickOpenViewer}
+            buttonProps={{ "aria-label": "Open MessageTiers" }}
+        >
+            <TierButton tier={0} width={20} height={20} />
+        </ChatBarButton>
+    );
+};
+
 const messageContextPatch: NavContextMenuPatchCallback = (children, { message }: { message?: Message; }) => {
     if (!message) return;
 
@@ -149,18 +164,6 @@ export default definePlugin({
     managedStyle: hardStyle,
     settings,
 
-    patches: [
-        {
-            // Replace the top-right Help button action with opening MessageTiers.
-            // This places quick access in the same toolbar row as pin/threads/member list.
-            find: 'navId:"staff-help-popout"',
-            replacement: {
-                match: /(isShown.+?)onClick:\i/,
-                replace: (_, rest) => `${rest}onClick:()=>$self.openViewerFromHeader()`
-            }
-        }
-    ],
-
     contextMenus: {
         message: messageContextPatch,
         "message-actions": messageContextPatch,
@@ -171,6 +174,11 @@ export default definePlugin({
 
     toolboxActions: {
         "Open MessageTiers": quickOpenViewer
+    },
+
+    chatBarButton: {
+        icon: makeTierIcon(0),
+        render: OpenViewerChatBarButton
     },
 
     messagePopoverButton: {
@@ -196,9 +204,5 @@ export default definePlugin({
     start() {
         // Access once to validate and sanitize persisted store structure.
         getAll();
-    },
-
-    openViewerFromHeader: quickOpenViewer
+    }
 });
-
-
